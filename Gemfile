@@ -8,6 +8,7 @@ gem "decidim", path: "."
 gem "decidim-conferences", path: "."
 gem "decidim-consultations", path: "."
 gem "decidim-initiatives", path: "."
+gem 'decidim-verifications-members_picker', git: 'https://github.com/gencat/decidim-verifications-members_picker.git', tag: '0.0.1'
 
 gem "bootsnap", "~> 1.3"
 
