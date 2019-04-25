@@ -13,6 +13,7 @@ module Decidim
       end
 
       def participatory_space_types_form_object(form_object, space_type)
+        return if spaces_user_can_admin[space_type.manifest_name.to_sym].blank?
         html = ""
         form_object.fields_for "participatory_space_types[#{space_type.manifest_name}]", space_type do |ff|
           html += ff.hidden_field :manifest_name, value: space_type.manifest_name
@@ -34,21 +35,22 @@ module Decidim
 
       def spaces_for_select(manifest_name)
         return unless Decidim.participatory_space_manifests.map(&:name).include?(manifest_name)
-        all_spaces = [[I18n.t("select_recipients_to_deliver.all_spaces", scope: "decidim.admin.newsletters"), "all"]]
-        spaces ||= Decidim.find_participatory_space_manifest(manifest_name)
-                          .participatory_spaces.call(current_organization)&.published&.order(title: :asc)&.map do |space|
+        spaces ||= organization_participatory_space(manifest_name)&.map do |space|
+          next unless spaces_user_can_admin[manifest_name.to_sym]&.include? space.id
           [
             translated_attribute(space.title),
             space.id,
             { class: space.try(:closed?) ? "red" : "green" }
           ]
         end
-        all_spaces + spaces
+        return spaces.compact unless current_user.admin?
+
+        [[I18n.t("select_recipients_to_deliver.all_spaces", scope: "decidim.admin.newsletters"), "all"]] + spaces
       end
 
       def selective_newsletter_to(newsletter)
-        return t("index.not_sent", scope: "decidim.admin.newsletters") unless newsletter.sent?
-        return t("index.all_users", scope: "decidim.admin.newsletters") if newsletter.sent? && newsletter.extended_data.blank?
+        return content_tag(:strong, t("index.not_sent", scope: "decidim.admin.newsletters"), class: "text-warning") unless newsletter.sent?
+        return content_tag(:strong, t("index.all_users", scope: "decidim.admin.newsletters"), class: "text-success") if newsletter.sent? && newsletter.extended_data.blank?
         content_tag :div do
           concat sent_to_users newsletter
           concat sent_to_spaces newsletter
@@ -58,7 +60,7 @@ module Decidim
 
       def sent_to_users(newsletter)
         content_tag :p, style: "margin-bottom:0;" do
-          concat t("index.has_been_sent_to", scope: "decidim.admin.newsletters")
+          concat content_tag(:strong, t("index.has_been_sent_to", scope: "decidim.admin.newsletters"), class: "text-success")
           concat content_tag(:strong, t("index.all_users", scope: "decidim.admin.newsletters")) if newsletter.sended_to_all_users?
           concat content_tag(:strong, t("index.followers", scope: "decidim.admin.newsletters")) if newsletter.sended_to_followers?
           concat t("index.and", scope: "decidim.admin.newsletters") if newsletter.sended_to_followers? && newsletter.sended_to_participants?
@@ -96,6 +98,26 @@ module Decidim
             concat content_tag(:strong, t("index.no_scopes", scope: "decidim.admin.newsletters"))
           end
         end
+      end
+
+      def organization_participatory_space(manifest_name)
+        @organization_participatory_space ||= Decidim.find_participatory_space_manifest(manifest_name)
+                                                     .participatory_spaces.call(current_organization)&.published&.order(title: :asc)
+      end
+
+      def spaces_user_can_admin
+        return @spaces_user_can_admin if defined?(@spaces_user_can_admin)
+        @spaces_user_can_admin = {}
+        Decidim.participatory_space_manifests.each do |manifest|
+          space_ids = { "#{manifest.name}": [] }
+          organization_participatory_space(manifest.name)&.map do |space|
+            next unless space.admins.exists?(id: current_user.id)
+            space_ids[manifest.name] << space.id
+          end
+          space_ids[manifest.name].uniq!
+          @spaces_user_can_admin.update(space_ids) unless space_ids[manifest.name].empty?
+        end
+        @spaces_user_can_admin
       end
     end
   end
