@@ -21,7 +21,7 @@ module Decidim
         allow! if user_can_enter_space_area?
 
         read_admin_dashboard_action?
-        admin_newsletter_action?
+        apply_newsletter_permissions_for_admin!
 
         if user.admin?
           allow! if read_admin_log_action?
@@ -64,7 +64,7 @@ module Decidim
         toggle_allow(user.admin? || space_allows_admin_access_to_current_action?)
       end
 
-      def admin_newsletter_action?
+      def apply_newsletter_permissions_for_admin!
         return unless permission_action.subject == :newsletter
         return allow! if user.admin?
         return unless space_allows_admin_access?
