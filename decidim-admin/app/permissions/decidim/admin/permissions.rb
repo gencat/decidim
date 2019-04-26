@@ -79,14 +79,12 @@ module Decidim
       end
 
       def space_allows_admin_access?
-        user_has_admin_access = false
-        Decidim.participatory_space_manifests.each do |manifest|
+        Decidim.participatory_space_manifests.any? do |manifest|
           Decidim.find_participatory_space_manifest(manifest.name)
-                 .participatory_spaces.call(organization)&.map do |space|
-            user_has_admin_access = true if space.admins.exists?(id: user.id)
+                 .participatory_spaces.call(organization)&.any? do |space|
+            space.admins.exists?(id: user.id)
           end
         end
-        user_has_admin_access
       end
 
       def read_admin_log_action?
