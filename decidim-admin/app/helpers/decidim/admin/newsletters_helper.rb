@@ -35,17 +35,9 @@ module Decidim
 
       def spaces_for_select(manifest_name)
         return unless Decidim.participatory_space_manifests.map(&:name).include?(manifest_name)
-        spaces ||= organization_participatory_space(manifest_name)&.map do |space|
-          next unless spaces_user_can_admin[manifest_name.to_sym]&.include? space.id
-          [
-            translated_attribute(space.title),
-            space.id,
-            { class: space.try(:closed?) ? "red" : "green" }
-          ]
-        end
-        return spaces.compact unless current_user.admin?
+        return spaces_user_can_admin[manifest_name] unless current_user.admin?
 
-        [[I18n.t("select_recipients_to_deliver.all_spaces", scope: "decidim.admin.newsletters"), "all"]] + spaces
+        [[I18n.t("select_recipients_to_deliver.all_spaces", scope: "decidim.admin.newsletters"), "all"]] + spaces_user_can_admin[manifest_name]
       end
 
       def selective_newsletter_to(newsletter)
@@ -101,23 +93,31 @@ module Decidim
       end
 
       def organization_participatory_space(manifest_name)
-        @organization_participatory_space ||= Decidim.find_participatory_space_manifest(manifest_name)
-                                                     .participatory_spaces.call(current_organization)&.published&.order(title: :asc)
+        @organization_participatory_spaces ||= {}
+        @organization_participatory_spaces[manifest_name] ||= Decidim.find_participatory_space_manifest(manifest_name)
+                                                                     .participatory_spaces.call(current_organization)&.published&.order(title: :asc)
       end
 
       def spaces_user_can_admin
-        return @spaces_user_can_admin if defined?(@spaces_user_can_admin)
-        @spaces_user_can_admin = {}
+        @spaces_user_can_admin ||= {}
         Decidim.participatory_space_manifests.each do |manifest|
-          space_ids = { "#{manifest.name}": [] }
-          organization_participatory_space(manifest.name)&.map do |space|
+          organization_participatory_space(manifest.name)&.each do |space|
             next unless space.admins.exists?(id: current_user.id)
-            space_ids[manifest.name] << space.id
+            @spaces_user_can_admin[manifest.name] ||= []
+            space_datum_data = space_datum(space)
+            @spaces_user_can_admin[manifest.name] << space_datum_data unless @spaces_user_can_admin[manifest.name].detect { |x| x == space_datum_data }
           end
-          space_ids[manifest.name].uniq!
-          @spaces_user_can_admin.update(space_ids) unless space_ids[manifest.name].empty?
         end
         @spaces_user_can_admin
+      end
+
+      def space_datum(space)
+        return unless space
+        [
+          translated_attribute(space.title),
+          space.id,
+          { class: space.try(:closed?) ? "red" : "green" }
+        ]
       end
     end
   end
