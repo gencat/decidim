@@ -23,7 +23,7 @@ module Decidim
         #
         # Returns an ActiveRecord::Relation.
         def query
-          Decidim::User.where(id: organization_admins).or(Decidim::User.where(id: assembly_admins))
+          Decidim::User.where(id: organization_admins).or(assembly_user_admins)
         end
 
         private
@@ -34,10 +34,11 @@ module Decidim
           assembly.organization.admins
         end
 
-        def assembly_admins
-          Decidim::AssemblyUserRole
-            .where(assembly: assembly, role: :admin)
-            .pluck(:decidim_user_id)
+        def assembly_user_admins
+          assembly_user_admin_ids = Decidim::AssemblyUserRole
+                                    .where(assembly: assembly, role: :admin)
+                                    .pluck(:decidim_user_id)
+          Decidim::User.where(id: assembly_user_admin_ids)
         end
       end
     end
