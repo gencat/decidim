@@ -104,14 +104,14 @@ module Decidim
           organization_participatory_space(manifest.name)&.each do |space|
             next unless space.admins.exists?(id: current_user.id)
             @spaces_user_can_admin[manifest.name] ||= []
-            space_datum_data = space_datum(space)
-            @spaces_user_can_admin[manifest.name] << space_datum_data unless @spaces_user_can_admin[manifest.name].detect { |x| x == space_datum_data }
+            space_as_option_for_select_data = space_as_option_for_select(space)
+            @spaces_user_can_admin[manifest.name] << space_as_option_for_select_data unless @spaces_user_can_admin[manifest.name].detect { |x| x == space_as_option_for_select_data }
           end
         end
         @spaces_user_can_admin
       end
 
-      def space_datum(space)
+      def space_as_option_for_select(space)
         return unless space
         [
           translated_attribute(space.title),
