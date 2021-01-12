@@ -162,7 +162,7 @@ module Decidim::Admin
 
         context "when interest not match the selected scopes" do
           let(:user_interset) { create(:scope, organization: organization) }
-          let!(:recipients) do
+          let!(:recipients) do 
             create_list(:user, 3, :confirmed, organization: organization, newsletter_notifications_at: Time.current, extended_data: { "interested_scopes" => user_interset.id })
           end
 

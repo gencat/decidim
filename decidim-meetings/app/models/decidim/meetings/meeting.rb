@@ -42,7 +42,7 @@ module Decidim
         (all.distinct if user&.admin?) ||
           if user.present?
             user_role_queries = %w(conference assembly participatory_process).map do |participatory_space_name|
-              # rubocop: disable Style/RedundantBegin
+              #  rubocop: disable Style/RedundantBegin
               begin
                 if "Decidim::#{participatory_space_name.classify}".constantize
                   "SELECT decidim_components.id FROM decidim_components
@@ -55,7 +55,7 @@ module Decidim
               rescue NameError
                 nil
               end
-              # rubocop: enable Style/RedundantBegin
+              #  rubocop: enable Style/RedundantBegin
             end
 
             where("decidim_meetings_meetings.private_meeting = ?
